@@ -19,7 +19,8 @@ CONFIGS = [
 [ "dqn",      "atari",     "PongDeterministic-v3",     "cnn",      "sequential"],  # 3
 [ "dqn",      "atari",     "BreakoutDeterministic-v3", "cnn",      "sequential"],  # 4
 [ "a3c",      "atari",     "PongDeterministic-v3",     "a3c-cnn",  "none"      ],  # 5
-[ "a3c",      "gym",       "InvertedPendulum-v1",      "a3c-mjc",  "none"      ]  # 6
+[ "a3c",      "gym",       "InvertedPendulum-v1",      "a3c-mjc",  "none"      ],  # 6
+[ "a3c",      "gym",       "Walker2d-v1",              "a3c-mjc",  "none"      ]  # 7
 ]
 
 class Params(object):   # NOTE: shared across all modules
@@ -30,8 +31,8 @@ class Params(object):   # NOTE: shared across all modules
         self.machine     = "waifa"       # "machine_id"
         self.timestamp   = "0000"   # "yymmdd##"
         # training configuration
-        self.mode        = 2            # 1(train) | 2(test model_file)
-        self.config      = 6
+        self.mode        = 1            # 1(train) | 2(test model_file)
+        self.config      = 7
 
         self.seed        = 123
         self.render      = False        # whether render the window from the original envs or not
@@ -57,7 +58,7 @@ class Params(object):   # NOTE: shared across all modules
         elif self.agent_type == "a3c":
             self.enable_lstm        = True
             self.enable_continuous  = True
-            self.num_processes      = 8
+            self.num_processes      = 16
 
             self.hist_len           = 1
             self.hidden_dim         = 128
