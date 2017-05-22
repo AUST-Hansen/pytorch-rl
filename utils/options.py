@@ -28,8 +28,8 @@ class Params(object):   # NOTE: shared across all modules
         self.verbose     = 0            # 0(warning) | 1(info) | 2(debug)
 
         # training signature
-        self.machine     = "waifa"       # "machine_id"
-        self.timestamp   = "0000"   # "yymmdd##"
+        self.machine     = "alienware"  # "machine_id"
+        self.timestamp   = "17052100"   # "yymmdd##"
         # training configuration
         self.mode        = 1            # 1(train) | 2(test model_file)
         self.config      = 7
@@ -57,8 +57,11 @@ class Params(object):   # NOTE: shared across all modules
             self.dtype              = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
         elif self.agent_type == "a3c":
             self.enable_lstm        = True
-            self.enable_continuous  = True
-            self.num_processes      = 16
+            if self.model_type == "a3c-mjc":    # NOTE: should be set to True when training Mujoco envs
+                self.enable_continuous  = True
+            else:
+                self.enable_continuous  = False
+            self.num_processes      = 8
 
             self.hist_len           = 1
             self.hidden_dim         = 128
