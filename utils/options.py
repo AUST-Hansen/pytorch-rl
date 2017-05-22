@@ -20,7 +20,8 @@ CONFIGS = [
 [ "dqn",      "atari",     "BreakoutDeterministic-v3", "cnn",      "sequential"],  # 4
 [ "a3c",      "atari",     "PongDeterministic-v3",     "a3c-cnn",  "none"      ],  # 5
 [ "a3c",      "gym",       "InvertedPendulum-v1",      "a3c-mjc",  "none"      ],  # 6
-[ "a3c",      "gym",       "Walker2d-v1",              "a3c-mjc",  "none"      ]  # 7
+[ "a3c",      "gym",       "Walker2d-v1",              "a3c-mjc",  "none"      ],  # 7
+[ "a3c",      "malmo",       "Pig-Chase",              "a3c-cnn",  "none"      ]  # 8
 ]
 
 class Params(object):   # NOTE: shared across all modules
@@ -32,7 +33,7 @@ class Params(object):   # NOTE: shared across all modules
         self.timestamp   = "17052100"   # "yymmdd##"
         # training configuration
         self.mode        = 1            # 1(train) | 2(test model_file)
-        self.config      = 7
+        self.config      = 8
 
         self.seed        = 123
         self.render      = False        # whether render the window from the original envs or not
@@ -61,7 +62,7 @@ class Params(object):   # NOTE: shared across all modules
                 self.enable_continuous  = True
             else:
                 self.enable_continuous  = False
-            self.num_processes      = 8
+            self.num_processes      = 1
 
             self.hist_len           = 1
             self.hidden_dim         = 128
@@ -118,6 +119,8 @@ class EnvParams(Params):    # settings for simulation environment
             self.wid_state = 80
             self.preprocess_mode = 3  # 0(nothing) | 1(rgb2gray) | 2(rgb2y) | 3(crop&resize depth)
             self.img_encoding_type = "passthrough"
+        elif self.env_type == "malmo":
+            self.host = "malmo"
         else:
             assert False, "env_type must be: gym | atari-ram | atari | lab"
 
@@ -205,7 +208,7 @@ class AgentParams(Params):  # hyperparameters for drl agents
             self.memory_interval     = 1
             self.train_interval      = 4
         elif self.agent_type == "a3c" and self.env_type == "atari-ram" or \
-             self.agent_type == "a3c" and (self.env_type == "atari" or self.env_type == "gym"):
+             self.agent_type == "a3c" and (self.env_type == "atari" or self.env_type == "gym" or self.env_type=="malmo"):
             self.steps               = 20000000 # max #iterations
             self.early_stop          = None     # max #steps per episode
             self.gamma               = 0.99
