@@ -2,6 +2,10 @@ from __future__ import absolute_import
 from __future__ import division
 import torch.multiprocessing as mp
 
+import sys
+sys.path.append('/root/malmo-challenge/ai_challenge/pig_chase')
+from ChallengeProcess import ChallengeProcess
+
 from core.agent import Agent
 from core.agents.a3cSingleProcess import A3CLearner, A3CEvaluator, A3CTester
 
@@ -11,10 +15,10 @@ class A3CAgent(Agent):
         self.logger.warning("<===================================> A3C-Master {Env(dummy) & Model}")
 
         # dummy_env just to get state_shape & action_dim
-        self.dummy_env   = self.env_prototype(self.env_params, self.num_processes)
-        self.state_shape = self.dummy_env.state_shape
-        self.action_dim  = self.dummy_env.action_dim
-        del self.dummy_env
+        #self.dummy_env   = self.env_prototype(self.env_params, self.num_processes)
+        self.state_shape = (1,1,18,18)
+        self.action_dim  = 3
+        #del self.dummy_env
 
         # global shared model
         self.model_params.state_shape = self.state_shape
@@ -46,7 +50,9 @@ class A3CAgent(Agent):
     def fit_model(self):
         self.jobs = []
         for process_id in range(self.num_processes):
+            self.jobs.append(ChallengeProcess(process_id))
             self.jobs.append(A3CLearner(self, process_id))
+        self.jobs.append(ChallengeProcess(self.num_processes))
         self.jobs.append(A3CEvaluator(self, self.num_processes))
 
         self.logger.warning("<===================================> Training ...")
