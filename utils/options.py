@@ -10,17 +10,19 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from utils.helpers import loggerConfig
-from utils.sharedAdam import SharedAdam
+from optims.sharedAdam import SharedAdam
+from optims.sharedRMSprop import SharedRMSprop
 
 CONFIGS = [
-# agent_type, env_type,    game,                       model_type, memory_type
-[ "empty",    "gym",       "CartPole-v0",              "mlp",      "none"      ],  # 0
-[ "dqn",      "gym",       "CartPole-v0",              "mlp",      "sequential"],  # 1
-[ "dqn",      "atari-ram", "Pong-ram-v0",              "mlp",      "sequential"],  # 2
-[ "dqn",      "atari",     "PongDeterministic-v3",     "cnn",      "sequential"],  # 3
-[ "dqn",      "atari",     "BreakoutDeterministic-v3", "cnn",      "sequential"],  # 4
-[ "a3c",      "atari",     "PongDeterministic-v3",     "a3c-cnn",  "none"      ],  # 5
-[ "a3c",      "gym",       "InvertedPendulum-v1",      "a3c-mjc",  "none"      ]   # 6
+# agent_type, env_type,    game,                       model_type,     memory_type
+[ "empty",    "gym",       "CartPole-v0",              "empty",        "none"      ],  # 0
+[ "dqn",      "gym",       "CartPole-v0",              "dqn-mlp",      "sequential"],  # 1
+[ "dqn",      "atari-ram", "Pong-ram-v0",              "dqn-mlp",      "sequential"],  # 2
+[ "dqn",      "atari",     "PongDeterministic-v4",     "dqn-cnn",      "sequential"],  # 3
+[ "dqn",      "atari",     "BreakoutDeterministic-v4", "dqn-cnn",      "sequential"],  # 4
+[ "a3c",      "atari",     "PongDeterministic-v4",     "a3c-cnn-dis",  "none"      ],  # 5
+[ "a3c",      "gym",       "InvertedPendulum-v1",      "a3c-mlp-con",  "none"      ],  # 6
+[ "acer",     "gym",       "CartPole-v1",              "acer-mlp-dis", "none"      ]   # 7  # NOTE: acer still under development, dont use this config
 ]
 
 class Params(object):   # NOTE: shared across all modules
@@ -28,8 +30,8 @@ class Params(object):   # NOTE: shared across all modules
         self.verbose     = 0            # 0(warning) | 1(info) | 2(debug)
 
         # training signature
-        self.machine     = "alienware"  # "machine_id"
-        self.timestamp   = "17052100"   # "yymmdd##"
+        self.machine     = "daim"    # "machine_id"
+        self.timestamp   = "17080900"   # "yymmdd##"
         # training configuration
         self.mode        = 1            # 1(train) | 2(test model_file)
         self.config      = 5
@@ -57,14 +59,27 @@ class Params(object):   # NOTE: shared across all modules
             self.dtype              = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
         elif self.agent_type == "a3c":
             self.enable_lstm        = True
-            if self.model_type == "a3c-mjc":    # NOTE: should be set to True when training Mujoco envs
+            if "-con" in self.model_type:
                 self.enable_continuous  = True
             else:
                 self.enable_continuous  = False
-            self.num_processes      = 8
+            self.num_processes      = 16
 
             self.hist_len           = 1
             self.hidden_dim         = 128
+
+            self.use_cuda           = False
+            self.dtype              = torch.FloatTensor
+        elif self.agent_type == "acer":
+            self.enable_lstm        = True
+            if "-con" in self.model_type:
+                self.enable_continuous  = True
+            else:
+                self.enable_continuous  = False
+            self.num_processes      = 16 
+
+            self.hist_len           = 1
+            self.hidden_dim         = 32
 
             self.use_cuda           = False
             self.dtype              = torch.FloatTensor
@@ -165,6 +180,7 @@ class AgentParams(Params):  # hyperparameters for drl agents
             self.gamma               = 0.99
             self.clip_grad           = 1.#np.inf
             self.lr                  = 0.0001
+            self.weight_decay        = 0.
             self.eval_freq           = 2500     # NOTE: here means every this many steps
             self.eval_steps          = 1000
             self.prog_freq           = self.eval_freq
@@ -188,6 +204,7 @@ class AgentParams(Params):  # hyperparameters for drl agents
             self.gamma               = 0.99
             self.clip_grad           = 40.#np.inf
             self.lr                  = 0.00025
+            self.weight_decay        = 0.
             self.eval_freq           = 250000#12500    # NOTE: here means every this many steps
             self.eval_steps          = 125000#2500
             self.prog_freq           = 10000#self.eval_freq
@@ -204,13 +221,28 @@ class AgentParams(Params):  # hyperparameters for drl agents
             self.action_repetition   = 4
             self.memory_interval     = 1
             self.train_interval      = 4
-        elif self.agent_type == "a3c" and self.env_type == "atari-ram" or \
-             self.agent_type == "a3c" and (self.env_type == "atari" or self.env_type == "gym"):
+        elif self.agent_type == "a3c":
             self.steps               = 20000000 # max #iterations
             self.early_stop          = None     # max #steps per episode
             self.gamma               = 0.99
             self.clip_grad           = 40.
             self.lr                  = 0.0001
+            self.weight_decay        = 1e-4 if self.enable_continuous else 0.
+            self.eval_freq           = 60       # NOTE: here means every this many seconds
+            self.eval_steps          = 3000
+            self.prog_freq           = self.eval_freq
+            self.test_nepisodes      = 10
+
+            self.rollout_steps       = 20       # max look-ahead steps in a single rollout
+            self.tau                 = 1.
+            self.beta                = 0.01     # coefficient for entropy penalty
+        elif self.agent_type == "acer":
+            self.steps               = 20000000 # max #iterations
+            self.early_stop          = None     # max #steps per episode
+            self.gamma               = 0.99
+            self.clip_grad           = 40.
+            self.lr                  = 0.0001
+            self.weight_decay        = 0.
             self.eval_freq           = 60       # NOTE: here means every this many seconds
             self.eval_steps          = 3000
             self.prog_freq           = self.eval_freq
@@ -224,6 +256,7 @@ class AgentParams(Params):  # hyperparameters for drl agents
             self.gamma               = 0.99
             self.clip_grad           = 1.#np.inf
             self.lr                  = 0.001
+            self.weight_decay        = 0.
             self.eval_freq           = 2500     # NOTE: here means every this many steps
             self.eval_steps          = 1000
             self.prog_freq           = self.eval_freq
