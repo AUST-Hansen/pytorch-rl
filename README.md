@@ -104,11 +104,7 @@ NOTE: we follow the exact code structure as [pytorch-dnc](https://github.com/jin
 
 ## Dependencies
 - Python 2.7
-<<<<<<< HEAD
-- [PyTorch](http://pytorch.org/) 0.1.12
-=======
 - [PyTorch >=v0.2.0](http://pytorch.org/)
->>>>>>> 444b1ca3ec08f9a85cf8b1e3b63ba590df7ef1b5
 - [Visdom](https://github.com/facebookresearch/visdom)
 - [OpenAI Gym >=v0.9.0 (for lower versoins, just need to change into the available games, e.g. change PongDeterministic-v4 to PongDeterministic-v3)](https://github.com/openai/gym)
 - [mujoco-py (Optional: for training continuous version of a3c)](https://github.com/openai/mujoco-py)

@@ -7,7 +7,3 @@ optims/*.pyc
 utils/*.pyc
 models/*
 logs/*
-figs/*
-figs
-gazebo
-gazebo/*
